@@ -1,0 +1,403 @@
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+ <meta charset="UTF-8" /> 
+ <meta name="viewport" content="width=device-width, initial-scale=1.0" /> 
+ <title>Interactive Slope Formula Input</title> 
+ <style> 
+ :root{ 
+ --bg:#0f172a; /* slate-900 */ 
+ --panel:#111827; /* gray-900 */ 
+ --ink:#e5e7eb; /* gray-200 */ 
+ --accent:#22c55e; /* green-500 */ 
+ --accent-2:#38bdf8; /* sky-400 */ 
+ --warn:#f43f5e; /* rose-500 */ 
+ --muted:#9ca3af; /* gray-400 */ 
+ --focus:#fde68a; /* amber-200 */ 
+ --c1:#f59e0b; /* amber-500 for P1 */ 
+ --c2:#38bdf8; /* sky-400 for P2 */ 
+ --cline:#a78bfa; /* violet-400 for line */ 
+ } 
+ html, body { height:100%; } 
+ body { 
+ margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji"; 
+ background:linear-gradient(135deg, #0b1025, var(--bg)); color:var(--ink); display:flex; align-items:center; justify-content:center; padding:20px; 
+ } 
+ .app { 
+ width:min(1200px, 100%); 
+ background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); 
+ border:1px solid rgba(255,255,255,0.08); 
+ border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); 
+ overflow:hidden; 
+ } 
+ header { padding:18px 22px; background:rgba(0,0,0,0.25); display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid rgba(255,255,255,0.08); } 
+ header h1 { font-size:1.15rem; margin:0; letter-spacing:0.2px; } 
+ header .small { color:var(--muted); font-size:0.9rem; } 
+ /* Two-column layout: formula (left, smaller) 
+ graph (right, larger) */ 
+ main {
+  grid-auto-flow: row;
+ padding:22px; display:grid; grid-template-columns: 1fr 1.4fr; gap:18px; align-items:start; } 
+ @media (max-width: 980px){ main {
+  grid-auto-flow: row;
+ grid-template-columns:1fr; } } 
+ .panel { overflow: visible; background:rgba(17,24,39,0.5); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; } 
+ /* Directions at the top of the left panel */ 
+ .directions { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); padding:10px 12px; border-radius:10px; margin-bottom:10px; } 
+ .directions p { margin:0; color:var(--muted); font-size:1.05rem; } 
+ /* Ordered pairs */ 
+ .pairs { display:flex; gap:18px; margin:8px 0 12px; flex-wrap:wrap; } 
+ .pair { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; min-width:160px; position:relative; } 
+ .pair::before{ content:''; position:absolute; left:-1px; top:8px; bottom:8px; width:6px; border-radius:6px; opacity:0.9; } 
+ .pair.p1::before{ background:var(--c1); } 
+ .pair.p2::before{ background:var(--c2); } 
+ .pair .coord { font-size:1.25rem; font-weight:800; letter-spacing:0.2px; text-align:center; } 
+ .pair .sublabel { color:var(--muted); font-size:1rem; margin-top:4px; text-align:center; font-weight:600; } 
+ /* Equation */ 
+ .equation { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:1.2rem; line-height:2.3; display:flex; align-items:center; flex-wrap:wrap; gap:12px; } 
+ .equation .frac { display:inline-grid; grid-template-rows:auto auto; align-items:center; justify-items:center; padding:0 6px; } 
+ .equation input { width:90px; padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:#0b1220; color:var(--ink); text-align:center; font-size:1.05rem; } 
+ .equation .bar { width:100%; height:2px; background:rgba(255,255,255,0.35); margin:2px 0; } 
+ .keypad { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; } 
+ .keypad button { padding:6px 10px; border-radius:8px; font-size:0.95rem; } 
+ .feedback { min-height:28px; margin-top:10px; font-weight:700; font-size:1rem; } 
+ .good { color:#86efac; } 
+ .warn { color:var(--warn); } 
+ /* Buttons moved to bottom of formula panel */ 
+ .actions { display:flex; gap:12px; flex-wrap:wrap; justify-content:flex-start; margin-top:14px; } 
+ .actions button { background:linear-gradient(180deg, var(--accent), #16a34a); color:black; border:none; padding:10px 14px; border-radius:10px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(34,197,94,0.35); } 
+ .actions button.secondary { background:linear-gradient(180deg, var(--accent-2), #0ea5e9); color:black; box-shadow:0 4px 12px rgba(56,189,248,0.35); } 
+ .actions button.ghost { background:transparent; color:var(--ink); border:1px solid rgba(255,255,255,0.18); box-shadow:none; } 
+ .actions button:focus { outline:2px dashed var(--focus); outline-offset:3px; } 
+ /* Graph panel */ 
+ .vis { display:flex; align-items:center; justify-content:center; } 
+ canvas {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  height: auto;
+
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(56,189,248,0.12), transparent),
+    radial-gradient(900px 500px at 120% 110%, rgba(34,197,94,0.10), transparent),
+    #0b1025;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+}
+ 
+ 
+/* Removed top-row extra spacing for mobile stability */
+
+.app { margin-top: 32px; }
+
+
+/* Fluid type sizes for headings */
+header h1 { font-size: clamp(1rem, 1.6vw + 0.6rem, 1.25rem); }
+h2 { font-size: clamp(1rem, 1.4vw + 0.6rem, 1.15rem); }
+
+/* Inputs scale a bit on small screens */
+.equation input {
+  width: clamp(72px, 16vw, 100px);
+  font-size: clamp(0.95rem, 1.3vw + 0.6rem, 1.05rem);
+}
+
+/* Buttons: bigger tap targets, wrap nicely */
+.actions button { min-height: 44px; padding: 10px 16px; font-size: clamp(0.95rem, 1.2vw + 0.6rem, 1rem); }
+
+/* Safety: make sure these blocks never collapse or hide */
+.directions, .pairs { display: block; visibility: visible; }
+.pairs { display: flex; flex-wrap: wrap; }
+
+/* Panels: reduce padding on tiny screens */
+@media (max-width: 600px) {
+  body { padding: 12px; }
+  .app { border-radius: 12px; }
+  main {
+  grid-auto-flow: row;
+ padding: 14px; gap: 12px; }
+  .panel { padding: 12px; }
+  .pairs { gap: 10px; }
+  .pair { min-width: 140px; }
+  .equation { gap: 8px; line-height: 2; }
+  .keypad button { padding: 8px 12px; min-height: 40px; }
+  .actions { gap: 8px; }
+}
+
+/* Allow the graph area to size freely without cropping labels */
+.vis { max-height: none; overflow: visible; }
+
+@media (min-width: 1200px) { canvas { aspect-ratio: 16 / 9; } }
+
+
+/* --- Critical mobile fix: allow full-height scroll, no vertical centering --- */
+@media (max-width: 700px) {
+  html, body { height: auto; }
+  body { display: block; align-items: initial; justify-content: initial; padding: 10px; }
+  .app { width: 100%; margin: 0 auto; }
+}
+
+</style> 
+</head> 
+<body> 
+ <div class="app" role="application" aria-label="Slope from two points input tool"> 
+ <header> 
+ <h1>🧮 Slope from Two Points <span class="small">(m = (y₂ − y₁) / (x₂ − x₁))</span></h1> 
+ </header> 
+ <main> 
+ <!-- LEFT: Formula / Inputs (smaller column) --> 
+ <section class="panel" aria-labelledby="pointsTitle"> 
+ <h2 id="pointsTitle">Slope Formula</h2> 
+ <div class="directions"><p>Directions: Place the correct values into the formula m = (y₂ − y₁) / (x₂ − x₁). Put y-values on top and x-values on the bottom to match each point.</p></div> 
+ <div class="pairs" id="pairs"></div> 
+ <div class="equation" aria-label="Slope formula with input boxes"> 
+ <div class="eqblock">m = 
+ <span class="frac" role="group" aria-label="fraction for rise over run"> 
+ <input id="y2" aria-label="y two" placeholder="y₂" inputmode="numeric" /> 
+ <div class="bar"></div> 
+ <input id="x2" aria-label="x two" placeholder="x₂" inputmode="numeric" /> 
+ </span> 
+ − 
+ <span class="frac"> 
+ <input id="y1" aria-label="y one" placeholder="y₁" inputmode="numeric" /> 
+ <div class="bar"></div> 
+ <input id="x1" aria-label="x one" placeholder="x₁" inputmode="numeric" /> 
+ </span> 
+ </div> 
+ </div> 
+ <div class="keypad" aria-label="quick keypad"> 
+ <button data-key="-">±</button> 
+ <button data-key="/">/</button> 
+ <button data-key="(">(</button> 
+ <button data-key=")">)</button> 
+ <button data-key="," >,</button> 
+ <button data-key="backspace">⌫</button> 
+ <button data-key="clear">Clear</button> 
+ </div> 
+ <div class="feedback" id="feedback" role="status" aria-live="polite"></div> 
+ <!-- ACTION BUTTONS AT THE BOTTOM OF THE FORMULA BOX --> 
+ <div class="actions"> 
+ <button id="btnNew" class="secondary" title="New problem (random points)">New Problem</button> 
+ <button id="btnCheck" title="Check student inputs">Check</button> 
+ <button id="btnReveal" class="ghost" title="Reveal the correct filled-in equation">Reveal</button> 
+ </div> 
+ </section> 
+ <!-- RIGHT: Graph (larger column) --> 
+ <section class="panel vis" aria-labelledby="graphTitle"> 
+  
+ <canvas id="graph" width="900" height="560" aria-label="Coordinate plane with two color-coded points, line, and slope triangle"></canvas> 
+ </section> 
+ <!-- Teacher Settings remains full width at the bottom if needed --> 
+ <section class="panel" aria-labelledby="settingsTitle" style="grid-column:1 / -1;"> 
+ <h2 id="settingsTitle">Teacher Settings</h2> 
+ <div class="settings" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"> 
+ <label><input type="checkbox" id="allowNegatives" checked /> Allow negative coordinates</label> 
+ <label><input type="checkbox" id="includeVertical" /> Include vertical lines (undefined slope)</label> 
+ <label><input type="checkbox" id="includeHorizontal" checked /> Include horizontal lines (slope 0)</label> 
+ <label>Range: x, y ∈ [<input type="number" id="minVal" value="-9" style="width:70px;"/> , <input type="number" id="maxVal" value="9" style="width:70px;"/>]</label> 
+ </div> 
+ </section> 
+ </main> 
+ </div> 
+<script> 
+(function(){ 
+ const el = id => document.getElementById(id); 
+ const y2 = el('y2'), y1 = el('y1'), x2 = el('x2'), x1 = el('x1'); 
+ const pairsEl = el('pairs'); 
+ const feedback = el('feedback'); 
+ const canvas = el('graph'); 
+ const ctx = canvas.getContext('2d'); 
+ let P1 = {x:0,y:0}, P2 = {x:3,y:4}; 
+ function randInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; } 
+ function gcd(a,b){ a = Math.abs(a); b = Math.abs(b); while(b){ [a,b] = [b, a % b]; } return a || 1; } 
+ function simplifyFraction(n, d){ if (d === 0) return { n: 1, d: 0 }; const g = gcd(n, d); n/=g; d/=g; if (d < 0){ n=-n; d=-d; } return { n, d }; } 
+ function formatPoint(P){ return `(${P.x}, ${P.y})`; } 
+ function updatePairsLabel(){ 
+ const p1HTML = `<div class="pair p1"><div class="coord">${formatPoint(P1)}</div><div class="sublabel">(x₁, y₁)</div></div>`; 
+ const p2HTML = `<div class="pair p2"><div class="coord">${formatPoint(P2)}</div><div class="sublabel">(x₂, y₂)</div></div>`; 
+ pairsEl.innerHTML = p1HTML + p2HTML; 
+ } 
+ function newProblem(){ 
+ const allowNeg = el('allowNegatives').checked; 
+ const includeVert = el('includeVertical').checked; 
+ const includeHoriz = el('includeHorizontal').checked; 
+ let minV = parseInt(el('minVal').value,10); 
+ let maxV = parseInt(el('maxVal').value,10); 
+ if (!allowNeg){ minV = Math.max(0, minV); } 
+ function randomPoint(){ return { x: randInt(minV, maxV), y: randInt(minV, maxV) }; } 
+ let valid = false; let tries = 0; 
+ while(!valid && tries < 1000){ 
+ tries++; 
+ P1 = randomPoint(); 
+ P2 = randomPoint(); 
+ if (P1.x === P2.x && P1.y === P2.y) continue; 
+ const dx = P2.x - P1.x; const dy = P2.y - P1.y; 
+ const isVert = dx === 0; const isHoriz = dy === 0; 
+ if (!includeVert && isVert) continue; 
+ if (!includeHoriz && isHoriz) continue; 
+ valid = true; 
+ } 
+ [y2, y1, x2, x1].forEach(inp => { inp.value = ''; inp.style.borderColor = 'rgba(255,255,255,0.18)'; }); 
+ feedback.textContent = ''; 
+ updatePairsLabel(); 
+ draw(); 
+ } 
+ function check(){ 
+ const exp = { y2: P2.y, y1: P1.y, x2: P2.x, x1: P1.x }; 
+ let correctCount = 0; 
+ [[y2,'y₂','y2'], [y1,'y₁','y1'], [x2,'x₂','x2'], [x1,'x₁','x1']].forEach(([input, label, key])=>{ 
+ const val = input.value.trim(); 
+ const num = Number(val); 
+ const ok = val !== '' && !Number.isNaN(num) && num === exp[key]; 
+ if (ok){ input.style.borderColor = '#22c55e'; correctCount++; } 
+ else{ input.style.borderColor = '#f43f5e'; } 
+ }); 
+ const dx = P2.x - P1.x; const dy = P2.y - P1.y; 
+ if (dx === 0){ 
+ feedback.innerHTML = `<span class="warn">Vertical line: x₂ − x₁ = 0 → slope is undefined.</span>`; 
+ } else { 
+ const simp = simplifyFraction(dy, dx); 
+ const asMixed = (simp.d === 1) ? `${simp.n}` : `${simp.n}/${simp.d}`; 
+ const signWord = (simp.n * simp.d < 0) ? 'negative' : (simp.n === 0 ? 'zero' : 'positive'); 
+ const msg = (correctCount === 4) 
+ ? `<span class="good">Great! You placed values correctly. m = (y₂ − y₁) / (x₂ − x₁) = (${P2.y} − ${P1.y}) / (${P2.x} − ${P1.x}) = ${dy}/${dx} = ${asMixed} (${signWord}).</span>` 
+ : `Keep going. Remember: y on top, x on bottom. With correct substitution: (${P2.y} − ${P1.y}) / (${P2.x} − ${P1.x}) = ${dy}/${dx} = ${asMixed}.`; 
+ feedback.innerHTML = msg; 
+ } 
+ draw(); 
+ } 
+ function reveal(){ y2.value = P2.y; y1.value = P1.y; x2.value = P2.x; x1.value = P1.x; check(); } 
+ // Zoom logic from v4 
+ 
+function resizeCanvas() {
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const displayWidth = canvas.clientWidth || 900;
+  let displayHeight = canvas.clientHeight || 0;
+  if (!displayHeight) {
+    // Fallback to aspect ratio (16:10) if CSS height not computed yet
+    displayHeight = Math.round(displayWidth * (10/16));
+  }
+  const neededWidth = Math.floor(displayWidth * dpr);
+  const neededHeight = Math.floor(displayHeight * dpr);
+  if (canvas.width !== neededWidth || canvas.height !== neededHeight) {
+    canvas.width = neededWidth;
+    canvas.height = neededHeight;
+  }
+  const t = ctx.getTransform();
+  if (t.a !== dpr || t.d !== dpr) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  return dpr;
+}
+
+function draw() {
+  const dpr = resizeCanvas();
+  const w = canvas.width / dpr, h = canvas.height / dpr;
+  // Dynamic sizing so labels don't overlap on small screens
+  const BASE = Math.min(w, h);
+  const POINT_R = Math.max(4, Math.round(BASE * 0.012));
+  const LABEL_PX = Math.max(12, Math.round(BASE * 0.028));
+  const SUBLABEL_PX = Math.max(11, Math.round(BASE * 0.022));
+  const RUNRISE_PX = Math.max(12, Math.round(BASE * 0.024));
+  const TEXT_OFFSET = Math.max(8, Math.round(LABEL_PX * 0.55));
+ 
+ ctx.clearRect(0,0,w,h); 
+ const pad = 1; let xMin, xMax, yMin, yMax; 
+ const sameSign = (a,b) => (a>0 && b>0) || (a<0 && b<0); 
+ const nonZero = v => v !== 0; 
+ const shareQuadrant = nonZero(P1.x) && nonZero(P2.x) && nonZero(P1.y) && nonZero(P2.y) 
+ && sameSign(P1.x, P2.x) && sameSign(P1.y, P2.y); 
+ if (shareQuadrant){ 
+ if (P1.x>0 && P2.x>0 && P1.y>0 && P2.y>0){ xMin=0; xMax=Math.max(P1.x,P2.x)+pad; yMin=0; yMax=Math.max(P1.y,P2.y)+pad; } 
+ else if (P1.x<0 && P2.x<0 && P1.y>0 && P2.y>0){ xMin=Math.min(P1.x,P2.x)-pad; xMax=0; yMin=0; yMax=Math.max(P1.y,P2.y)+pad; } 
+ else if (P1.x<0 && P2.x<0 && P1.y<0 && P2.y<0){ xMin=Math.min(P1.x,P2.x)-pad; xMax=0; yMin=Math.min(P1.y,P2.y)-pad; yMax=0; } 
+ else if (P1.x>0 && P2.x>0 && P1.y<0 && P2.y<0){ xMin=0; xMax=Math.max(P1.x,P2.x)+pad; yMin=Math.min(P1.y,P2.y)-pad; yMax=0; } 
+ } else { 
+ xMin = Math.min(P1.x, P2.x) - pad; xMax = Math.max(P1.x, P2.x) + pad; 
+ yMin = Math.min(P1.y, P2.y) - pad; yMax = Math.max(P1.y, P2.y) + pad; 
+ if (xMin === xMax){ xMin -= 1; xMax += 1; } 
+ if (yMin === yMax){ yMin -= 1; yMax += 1; } 
+ } 
+ const margin = Math.max(52, Math.round(Math.min(w, h) * 0.06)); const gridW = w - 2*margin; const gridH = h - 2*margin; 
+ const scaleX = gridW / (xMax - xMin); const scaleY = gridH / (yMax - yMin); 
+ function toCanvas(pt){ return { x: margin + (pt.x - xMin) * scaleX, y: margin + (yMax - pt.y) * scaleY }; } 
+ // Grid 
+ ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1; 
+ const startXi = Math.ceil(xMin); const endXi = Math.floor(xMax); 
+ const startYi = Math.ceil(yMin); const endYi = Math.floor(yMax); 
+ for(let i=startXi; i<=endXi; i++){ const cx = toCanvas({x:i,y:0}).x; ctx.beginPath(); ctx.moveTo(cx, margin); ctx.lineTo(cx, h-margin); ctx.stroke(); } 
+ for(let j=startYi; j<=endYi; j++){ const cy = toCanvas({x:0,y:j}).y; ctx.beginPath(); ctx.moveTo(margin, cy); ctx.lineTo(w-margin, cy); ctx.stroke(); } 
+ // Axes if visible 
+ ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2; 
+ if (yMin < 0 && yMax > 0){ const xAxisY = toCanvas({x:0,y:0}).y; ctx.beginPath(); ctx.moveTo(margin, xAxisY); ctx.lineTo(w - margin, xAxisY); ctx.stroke(); } 
+ if (xMin < 0 && xMax > 0){ const yAxisX = toCanvas({x:0,y:0}).x; ctx.beginPath(); ctx.moveTo(yAxisX, margin); ctx.lineTo(yAxisX, h - margin); ctx.stroke(); } 
+ // Points/line 
+ const c1 = toCanvas(P1), c2 = toCanvas(P2); const dx = P2.x - P1.x, dy = P2.y - P1.y; 
+ ctx.strokeStyle = 'rgba(167,139,250,0.95)'; ctx.lineWidth = Math.max(1.5, Math.round(BASE * 0.003)); ctx.setLineDash([Math.max(6, Math.round(BASE*0.008)), Math.max(4, Math.round(BASE*0.006))]); 
+ if (dx !== 0){ const slope = dy / dx; const yAtMinX = P1.y + slope * (xMin - P1.x); const yAtMaxX = P1.y + slope * (xMax - P1.x); const a = toCanvas({x:xMin, y:yAtMinX}); const b = toCanvas({x:xMax, y:yAtMaxX}); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); } 
+ else { const vx = toCanvas(P1).x; ctx.beginPath(); ctx.moveTo(vx, margin); ctx.lineTo(vx, h - margin); ctx.stroke(); } 
+ ctx.setLineDash([]); 
+ const c1Color = getComputedStyle(document.documentElement).getPropertyValue('--c1').trim(); 
+ const c2Color = getComputedStyle(document.documentElement).getPropertyValue('--c2').trim(); 
+ function drawPoint(cpt, top, bottom, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(cpt.x, cpt.y, POINT_R, 0, Math.PI*2); ctx.fill();
+  // Top line: coordinates in white
+  ctx.font = `700 ${LABEL_PX}px system-ui, -apple-system, Segoe UI, Roboto`;
+  ctx.fillStyle = 'rgba(255,255,255,0.98)';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(top, cpt.x + TEXT_OFFSET, cpt.y - 2);
+  // Bottom line: (x₁, y₁)/(x₂, y₂) in point color, slightly smaller if needed
+  ctx.font = `700 ${SUBLABEL_PX}px system-ui, -apple-system, Segoe UI, Roboto`;
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = color;
+  ctx.fillText(bottom, cpt.x + TEXT_OFFSET, cpt.y + 2);
+}
+ drawPoint(c1, `(${P1.x}, ${P1.y})`, '(x₁, y₁)', c1Color); 
+ drawPoint(c2, `(${P2.x}, ${P2.y})`, '(x₂, y₂)', c2Color); 
+ // Triangle 
+ const A = P1; const B = { x: P2.x, y: P1.y }; const C = P2; const Ac = toCanvas(A), Bc = toCanvas(B), Cc = toCanvas(C); 
+ ctx.fillStyle = 'rgba(56,189,248,0.20)'; ctx.beginPath(); ctx.moveTo(Ac.x, Ac.y); ctx.lineTo(Bc.x, Bc.y); ctx.lineTo(Cc.x, Cc.y); ctx.closePath(); ctx.fill(); 
+ ctx.strokeStyle = c1Color; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(Ac.x, Ac.y); ctx.lineTo(Bc.x, Bc.y); ctx.stroke(); 
+ ctx.strokeStyle = c2Color; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(Bc.x, Bc.y); ctx.lineTo(Cc.x, Cc.y); ctx.stroke(); 
+ const corner = Math.max(8, Math.round(BASE * 0.015)); ctx.strokeStyle = 'rgba(56,189,248,0.95)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(Bc.x, Bc.y); ctx.lineTo(Bc.x + Math.sign(Ac.x - Bc.x) * corner, Bc.y); ctx.lineTo(Bc.x + Math.sign(Ac.x - Bc.x) * corner, Bc.y + Math.sign(Cc.y - Bc.y) * corner); ctx.lineTo(Bc.x, Bc.y + Math.sign(Cc.y - Bc.y) * corner); ctx.stroke(); 
+ // rise/run labels 
+ const midRun = { x: (Ac.x + Bc.x)/2, y: (Ac.y + Bc.y)/2 }; const midRise = { x: (Bc.x + Cc.x)/2, y: (Bc.y + Cc.y)/2 }; 
+ ctx.font = `800 ${RUNRISE_PX}px system-ui, -apple-system, Segoe UI, Roboto`;
+// Compute pixel lengths of run/rise
+const runLen = Math.abs(Bc.x - Ac.x);
+const riseLen = Math.abs(Cc.y - Bc.y);
+// Draw labels only if there's enough room; otherwise offset further from the segment
+ctx.textBaseline = 'bottom'; ctx.fillStyle = c1Color;
+if (runLen > LABEL_PX * 1.8) {
+  ctx.fillText(`run = ${P2.x - P1.x}`, (Ac.x + Bc.x)/2, (Ac.y + Bc.y)/2 - Math.max(6, RUNRISE_PX*0.5));
+} else {
+  ctx.fillText(`run = ${P2.x - P1.x}`, (Ac.x + Bc.x)/2, (Ac.y + Bc.y)/2 - Math.max(12, RUNRISE_PX));
+}
+ctx.textBaseline = 'top'; ctx.fillStyle = c2Color;
+if (riseLen > LABEL_PX * 1.8) {
+  ctx.fillText(`rise = ${P2.y - P1.y}`, (Bc.x + Cc.x)/2 + Math.max(6, RUNRISE_PX*0.5), (Bc.y + Cc.y)/2 + Math.max(6, RUNRISE_PX*0.5));
+} else {
+  ctx.fillText(`rise = ${P2.y - P1.y}`, (Bc.x + Cc.x)/2 + Math.max(12, RUNRISE_PX), (Bc.y + Cc.y)/2 + Math.max(12, RUNRISE_PX));
+}
+ctx.restore(); 
+ } 
+ // Keypad support 
+ const keypad = document.querySelector('.keypad'); 
+ keypad.addEventListener('click', (e)=>{ 
+ const key = e.target.getAttribute('data-key'); 
+ const active = document.activeElement; 
+ if (!key || !(active instanceof HTMLInputElement)) return; 
+ if (key === 'backspace'){ active.value = active.value.slice(0,-1); return; } 
+ if (key === 'clear'){ active.value = ''; return; } 
+ if (key === '±'){ if (active.value.startsWith('-')) active.value = active.value.slice(1); else active.value = '-' + active.value; return; } 
+ active.value += key; active.focus(); 
+ }); 
+ // Buttons now at bottom of formula panel 
+ document.getElementById('btnNew').addEventListener('click', newProblem); 
+ document.getElementById('btnCheck').addEventListener('click', check); 
+ document.getElementById('btnReveal').addEventListener('click', reveal); 
+ // Initialize 
+ newProblem(); 
+})(); 
+</script> 
+</body> 
+</html>
